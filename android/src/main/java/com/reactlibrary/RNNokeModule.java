@@ -5,119 +5,94 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.Context;
+import android.os.IBinder;
+import android.content.ComponentName;
+
+import com.noke.nokemobilelibrary.NokeDevice;
+import com.noke.nokemobilelibrary.NokeServiceListener;
+import com.noke.nokemobilelibrary.NokeDeviceManagerService;
 
 public class RNNokeModule extends ReactContextBaseJavaModule {
 
-  private final ReactApplicationContext reactContext;
+    private final ReactApplicationContext reactContext;
 
-  public RNNokeModule(ReactApplicationContext reactContext) {
-    super(reactContext);
-    this.reactContext = reactContext;
-  }
+    public RNNokeModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        this.reactContext = reactContext;
+    }
 
-  @Override
-  public String getName() {
-    return "RNNoke";
-  }
+    @Override
+    public String getName() {
+        return "RNNoke";
+    }
 
-  private NokeDeviceManagerService mNokeService = null;
-  private NokeDevice currentNoke;
-  
-  private ServiceConnection mServiceConnection = new ServiceConnection() {
-     public void onServiceConnected(ComponentName className, IBinder rawBinder) {
-         //Log.w(TAG, "ON SERVICE CONNECTED");
-         //Store reference to service
-         mNokeService = ((NokeDeviceManagerService.LocalBinder) rawBinder).getService();
-         //Register callback listener
-         mNokeService.registerNokeListener(mNokeServiceListener);
-         //Add locks to device manager
-         NokeDevice noke1 = new NokeDevice("TEST LOCK", "XX:XX:XX:XX:XX:XX");
-         mNokeService.addNokeDevice(noke1);
-         //mNokeService.setUploadUrl("https://coreapi-sandbox.appspot.com/upload/");
-         //Start bluetooth scanning
-         mNokeService.startScanningForNokeDevices();
+    private NokeDeviceManagerService mNokeService = null;
+    private NokeDevice currentNoke;
 
-         if (!mNokeService.initialize()) {
-             //Log.e(TAG, "Unable to initialize Bluetooth");
-         }
-     }
-     public void onServiceDisconnected(ComponentName classname) {
-         mNokeService = null;
-     }
- };
+    private void initiateNokeService() {
+        Intent nokeServiceIntent = new Intent(reactContext, NokeDeviceManagerService.class);
+        reactContext.bindService(nokeServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
+    }
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder rawBinder) {
+            //Store reference to service
+            mNokeService = ((NokeDeviceManagerService.LocalBinder) rawBinder).getService();
+            //Register callback listener
+            mNokeService.registerNokeListener(mNokeServiceListener);
+            //Start bluetooth scanning
+            mNokeService.startScanningForNokeDevices();
+            if (!mNokeService.initialize()) {
+                //Log.e(TAG, "Unable to initialize Bluetooth");
+            }
+        }
+        public void onServiceDisconnected(ComponentName classname) {
+            mNokeService = null;
+        }
+    };
+    private NokeServiceListener mNokeServiceListener = new NokeServiceListener() {
+        @Override
+        public void onNokeDiscovered(NokeDevice noke) {
 
- @ReactMethod
- public void initNoke() {
-   initiateNokeService();
- }
+        }
 
- private void initiateNokeService(){
-   Intent nokeServiceIntent = new Intent(getReactApplicationContext(), NokeDeviceManagerService.class);
-   reactContext.bindService(nokeServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
- }
+        @Override
+        public void onNokeConnecting(NokeDevice noke) {
 
- private NokeServiceListener mNokeServiceListener = new NokeServiceListener() {
-      @Override
-      public void onNokeDiscovered(NokeDevice noke) {
-          //setStatusText("NOKE DISCOVERED: " + noke.getName());
-          mNokeService.connectToNoke(noke);
-      }
+        }
 
-      @Override
-      public void onNokeConnecting(NokeDevice noke) {
-          //setStatusText("NOKE CONNECTING: " + noke.getName());
-      }
+        @Override
+        public void onNokeConnected(NokeDevice noke) {
 
-      @Override
-      public void onNokeConnected(NokeDevice noke) {
-          //setStatusText("NOKE CONNECTED: " + noke.getName());
-          currentNoke = noke;
-          mNokeService.stopScanning();
-      }
+        }
 
-      @Override
-      public void onNokeSyncing(NokeDevice noke) {
-          //setStatusText("NOKE SYNCING: " + noke.getName());
-      }
+        @Override
+        public void onNokeSyncing(NokeDevice noke) {
 
-      @Override
-      public void onNokeUnlocked(NokeDevice noke) {
-          //setStatusText("NOKE UNLOCKED: " + noke.getName());
-      }
+        }
 
-      @Override
-      public void onNokeDisconnected(NokeDevice noke) {
-          //setStatusText("NOKE DISCONNECTED: " + noke.getName());
-          currentNoke = null;
-          mNokeService.uploadData();
-          mNokeService.startScanningForNokeDevices();
-      }
+        @Override
+        public void onNokeUnlocked(NokeDevice noke) {
 
-      @Override
-      public void onBluetoothStatusChanged(int bluetoothStatus) {
+        }
+        @Override
+        public void onNokeDisconnected(NokeDevice noke) {
 
-      }
-      @Override
-      public void onError(NokeDevice noke, int error, String message) {
-          //Log.e(TAG, "NOKE SERVICE ERROR " + error + ": " + message);
-       }
-  };
+        }
+        @Override
+        public void onBluetoothStatusChanged(int bluetoothStatus) {
 
-  @ReactMethod
-  public void onUnlockReceived(String response, NokeDevice noke) {
-     //Log.d(TAG, "UNLOCK RECEIVED: "+ response);
-     try{
-         JSONObject obj = new JSONObject(response);
-         Boolean result = obj.getBoolean("result");
-         if(result){
-             JSONObject data = obj.getJSONObject("data");
-             String commandString = data.getString("commands");
-             currentNoke.sendCommands(commandString);
-         }else{
-         }
+        }
+        @Override
+        public void onError(NokeDevice noke, int error, String message) {
+            // Log.e(TAG, "NOKE SERVICE ERROR " + error + ": " + message);
+        }
+    };
 
-     }catch (JSONException e){
-         //Log.e(TAG, e.toString());
-     }
-  }
+    @ReactMethod
+    public void initNoke() {
+      initiateNokeService();
+    }
 }

@@ -27,10 +27,11 @@ android {
 }
 
 repositories {
-    mavenCentral()
+    jcenter()
+    maven { url "https://jitpack.io" }
 }
 
 dependencies {
     compile 'com.facebook.react:react-native:+'
+    compile 'com.noke.nokemobilelibrary:nokemobilelibrary:0.1.0'
 }
-  

@@ -95,4 +95,21 @@ public class RNNokeModule extends ReactContextBaseJavaModule {
     public void initNoke() {
       initiateNokeService();
     }
+    // @ReactMethod
+    // public void onUnlockReceived(String response, NokeDevice noke) {
+    //    // //Log.d(TAG, "UNLOCK RECEIVED: "+ response);
+    //    // try{
+    //    //     JSONObject obj = new JSONObject(response);
+    //    //     Boolean result = obj.getBoolean("result");
+    //    //     if(result){
+    //    //         JSONObject data = obj.getJSONObject("data");
+    //    //         String commandString = data.getString("commands");
+    //    //         currentNoke.sendCommands(commandString);
+    //    //     }else{
+    //    //     }
+    //    //
+    //    // }catch (JSONException e){
+    //    //     //Log.e(TAG, e.toString());
+    //    // }
+    // }
 }

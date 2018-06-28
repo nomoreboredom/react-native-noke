@@ -22,6 +22,7 @@ import com.noke.nokemobilelibrary.NokeServiceListener;
 import com.noke.nokemobilelibrary.NokeDeviceManagerService;
 
 public class RNNokeModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
+
     private final ReactApplicationContext reactContext;
     private NokeDeviceManagerService mNokeService = null;
     private NokeDevice currentNoke;
@@ -30,15 +31,12 @@ public class RNNokeModule extends ReactContextBaseJavaModule implements Lifecycl
         super(reactContext);
         this.reactContext=reactContext;
     }
-    @Override
-    public String getName() {
-        return "RNNoke";
-    }
 
     private void initiateNokeService() {
         Intent nokeServiceIntent = new Intent(getReactApplicationContext(), NokeDeviceManagerService.class);
         reactContext.bindService(nokeServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
     }
+
     private ServiceConnection mServiceConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder rawBinder) {
             Log.e("Info: ", "serviceConnected");
@@ -55,12 +53,11 @@ public class RNNokeModule extends ReactContextBaseJavaModule implements Lifecycl
             Log.e("Info: ", "nokeDevicesAdded");
             //Start bluetooth scanning
             mNokeService.startScanningForNokeDevices();
-            Log.e("MyTagGoesHere", "mNokeService.startScanningForNokeDevices()");
-            sendEvent(reactContext,"initDone","dwdw");
             if (!mNokeService.initialize()) {
-                //sendEvent(reactContext,"initDone","dwdw");
+                sendEvent(reactContext,"error","Unable to initialize Bluetooth");
                 Log.e("E", "Unable to initialize Bluetooth");
             }
+            sendEvent(reactContext,"initializationDone","NOKE initialization is done");
         }
         public void onServiceDisconnected(ComponentName classname) {
             mNokeService = null;
@@ -70,6 +67,7 @@ public class RNNokeModule extends ReactContextBaseJavaModule implements Lifecycl
         @Override
         public void onNokeDiscovered(NokeDevice noke) {
             Log.e("Info: ", "onNokeDiscovered");
+            sendEvent(reactContext,"discovered", noke);
         }
         @Override
         public void onNokeConnecting(NokeDevice noke) {
@@ -78,6 +76,7 @@ public class RNNokeModule extends ReactContextBaseJavaModule implements Lifecycl
         @Override
         public void onNokeConnected(NokeDevice noke) {
             Log.e("Info: ", "onNokeConnected");
+            sendEvent(reactContext,"connected", noke);
         }
         @Override
         public void onNokeSyncing(NokeDevice noke) {
@@ -101,45 +100,62 @@ public class RNNokeModule extends ReactContextBaseJavaModule implements Lifecycl
         }
     };
 
-    @ReactMethod
-    public void initNoke() {
-        initiateNokeService();
-    }
+
     private void sendEvent(ReactContext reactContext, String eventName, @Nullable String param) {
         reactContext
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-            .emit(eventName, param);
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, param);
     }
-    // @ReactMethod
-    // public void onUnlockReceived(String response, NokeDevice noke) {
-    //    // //Log.d(TAG, "UNLOCK RECEIVED: "+ response);
-    //    // try{
-    //    //     JSONObject obj = new JSONObject(response);
-    //    //     Boolean result = obj.getBoolean("result");
-    //    //     if(result){
-    //    //         JSONObject data = obj.getJSONObject("data");
-    //    //         String commandString = data.getString("commands");
-    //    //         currentNoke.sendCommands(commandString);
-    //    //     }else{
-    //    //     }
-    //    //
-    //    // }catch (JSONException e){
-    //    //     //Log.e(TAG, e.toString());
-    //    // }
-    // }
+
     @Override
     public void onHostResume() {
         getReactApplicationContext()
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-            .emit("activityResume", null);
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit("activityResume", null);
     }
+
     @Override
     public void onHostPause() {
         getReactApplicationContext()
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-            .emit("activityPause", null);
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit("activityPause", null);
     }
+
     @Override
     public void onHostDestroy() {
     }
+
+    @ReactMethod
+    public void sendCommand(String response, NokeDevice noke) {
+       //Log.d(TAG, "UNLOCK RECEIVED: "+ response);
+       try{
+           JSONObject obj = new JSONObject(response);
+           Boolean result = obj.getBoolean("result");
+           if(result){
+               JSONObject data = obj.getJSONObject("data");
+               String commandString = data.getString("commands");
+               currentNoke.sendCommands(commandString);
+           }else{
+
+           }
+       }catch (JSONException e){
+           //Log.e(TAG, e.toString());
+       }
+    }
+
+    @ReactMethod
+    public void init() {
+        initiateNokeService();
+    }
+
+    @ReactMethod
+    public void connectToNoke(NokeDevice noke) {
+        mNokeService.connectToNoke(noke);
+    }
+
+    @Override
+    public String getName() {
+        return "RNNoke";
+    }
+
 }
